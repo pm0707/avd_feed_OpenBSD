@@ -1466,7 +1466,7 @@ class AvdApp(Gtk.Application):
             or self._eff("cert", res, session)
         cert_flag = "/cert:ignore" if cert_mode == "ignore" else "/cert:tofu"
         apply_client_hotkeys(self._eff("hotkeys", res, session))
-        argv += ["/sound:sys:pulse", "/microphone", cert_flag,
+        argv += config.audio_args() + [cert_flag,
                  f"/scale-desktop:{scale}", "/log-level:info",
                  # bandwidth/quality + resilience + keepalive:
                  "+compression", "+fonts",

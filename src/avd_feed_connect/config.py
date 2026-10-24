@@ -9,6 +9,7 @@ instead, never here.
 
 import os
 import shutil
+import sys
 import urllib.parse
 
 # Multi-tenant by default: "organizations" lets any work/school account sign in
@@ -42,12 +43,46 @@ OUT = os.path.join(_DATA, "avd-feed-connect", "feed")
 CACHE = os.path.join(_DATA, "avd-feed-connect", "token-cache.json")
 
 
+IS_OPENBSD = sys.platform.startswith("openbsd")
+
+
 def find_sdl_freerdp():
-    """Locate the SDL3 FreeRDP client. In the Flatpak it is on PATH at
-    /app/bin/sdl-freerdp; unpackaged, fall back to the local -cam build."""
+    """Locate the FreeRDP client. In the Flatpak it is on PATH at
+    /app/bin/sdl-freerdp; unpackaged, fall back to the local -cam build.
+
+    Platforms whose FreeRDP package ships without the SDL client (OpenBSD's
+    is built with WITH_CLIENT_SDL=OFF) fall back to xfreerdp, which accepts
+    the same /gateway:type:arm /sec:aad command line."""
+    local = os.path.join(HOME, "opt", "freerdp-sdl3-cam", "bin", "sdl-freerdp")
     return (os.environ.get("AVD_SDL_FREERDP")
             or shutil.which("sdl-freerdp")
-            or os.path.join(HOME, "opt", "freerdp-sdl3-cam", "bin", "sdl-freerdp"))
+            or (local if os.path.exists(local) else None)
+            or shutil.which("xfreerdp")
+            or local)
+
+
+def is_xfreerdp(binary):
+    """True when ``binary`` is the X11 client rather than sdl-freerdp."""
+    return os.path.basename(binary or "").startswith("xfreerdp")
+
+
+def find_audio_backend():
+    """FreeRDP audio subsystem: AVD_SOUND wins ("none" disables audio
+    redirection); otherwise sndio on OpenBSD and PulseAudio elsewhere."""
+    override = os.environ.get("AVD_SOUND", "").strip().lower()
+    if override:
+        return override
+    return "sndio" if IS_OPENBSD else "pulse"
+
+
+def audio_args(backend=None):
+    """Playback + microphone flags for the chosen audio backend."""
+    backend = backend or find_audio_backend()
+    if backend == "none":
+        return []
+    if backend == "pulse":
+        return ["/sound:sys:pulse", "/microphone"]  # unchanged Linux behaviour
+    return [f"/sound:sys:{backend}", f"/microphone:sys:{backend}"]
 
 
 SDL = find_sdl_freerdp()

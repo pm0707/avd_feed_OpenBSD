@@ -10,6 +10,7 @@ decide whether to honor it (Hyprland needs misc:focus_on_activate).
 
 import ctypes
 import ctypes.util
+import sys
 
 _CLIENT_MESSAGE = 33
 _XA_CARDINAL = 6
@@ -35,7 +36,11 @@ _lib = None
 def _xlib():
     global _lib
     if _lib is None:
-        lib = ctypes.CDLL(ctypes.util.find_library("X11") or "libX11.so.6")
+        # OpenBSD has no libX11.so.6 (its majors differ), so fall back to the
+        # unversioned name there, which the loader resolves under /usr/X11R6/lib.
+        lib = ctypes.CDLL(ctypes.util.find_library("X11")
+                          or ("libX11.so" if sys.platform.startswith("openbsd")
+                              else "libX11.so.6"))
         lib.XOpenDisplay.argtypes = [ctypes.c_char_p]
         lib.XOpenDisplay.restype = ctypes.c_void_p
         lib.XCloseDisplay.argtypes = [ctypes.c_void_p]

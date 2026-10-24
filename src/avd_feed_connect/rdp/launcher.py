@@ -103,6 +103,8 @@ def apply_client_hotkeys(mode, path=None):
         modifiers = HOTKEY_MODIFIERS.get(mode) if isinstance(mode, str) else None
         if modifiers is None and mode != "defaults":
             return False
+    if path is None and config.is_xfreerdp(config.SDL):
+        return True  # xfreerdp has its own fixed shortcuts; no config file to write
     path = path or sdl_config_path()
     try:
         with open(path) as f:
@@ -141,7 +143,7 @@ def build_argv(sdl, path, upn):
     # off for host pools whose session-host certs rotate.
     cert_flag = "/cert:ignore" if os.environ.get("AVD_CERT", "").strip().lower() \
         == "ignore" else "/cert:tofu"
-    argv += ["/sound:sys:pulse", "/microphone", cert_flag,
+    argv += config.audio_args() + [cert_flag,
              "/f", "/scale-desktop:200", "-multimon", "/log-level:info"]
     return argv
 
